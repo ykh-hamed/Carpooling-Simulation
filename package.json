@@ -1,0 +1,23 @@
+{
+  "name": "rtsfinal",
+  "version": "1.0.0",
+  "description": "car pooling prototype",
+  "main": "index.html",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "car",
+    "pooling",
+    "node.js",
+    "socket.io"
+  ],
+  "author": "3awD Yasser Emad",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.15.2",
+    "mongodb": "^2.2.26",
+    "nodemon": "^1.11.0",
+    "socket.io": "^1.7.3"
+  }
+}

@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <style>
+        html,
+        body {
+            font-family: Arial, sans-serif;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .container {
+            height: 100%;
+            position: relative;
+        }
+        
+        input {
+            font-size: 12px;
+        }
+        
+        h1 {
+            color: #525454;
+            font-size: 22px;
+            margin: 0 0 10px 0;
+            text-align: center;
+        }
+        
+        #hide-listings,
+        #show-listings {
+            width: 48%;
+        }
+        
+        #join-trip {
+            width: 25%;
+        }
+        
+        #map {
+            bottom: 0px;
+            height: 100%;
+            left: 362px;
+            position: absolute;
+            right: 0px;
+        }
+        
+        .options-box {
+            background: #fff;
+            border: 1px solid #999;
+            border-radius: 3px;
+            height: 100%;
+            line-height: 35px;
+            padding: 10px 10px 30px 10px;
+            text-align: left;
+            width: 340px;
+        }
+
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="options-box">
+            <div id="userID"></div>
+            <br>
+            <h1>Where do you want to go? </h1>
+
+            <br>
+            <div>
+                <input id="show-listings" type="button" value="Start Ride">
+                <input id="hide-listings" type="button" value="End Ride">
+                <br>
+                <input id="join-trip" type="button" value="Join Trip"> &nbsp Destination: <input id="dest-field" type="text" value="">
+            </div>
+        </div>
+        <div id="map"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+
+    <script>
+        var map;
+        var markers = [];
+        var socket = io();
+        var driving = false;
+        var riding = false;
+        var curTripId;
+        var myUserID;
+        var ori = '';
+
+        function initMap() {
+            //constructor
+
+            //initializing the directions services
+            var directionsService = new google.maps.DirectionsService;
+            var directionsDisplay = new google.maps.DirectionsRenderer;
+            var geocoder = new google.maps.Geocoder;
+
+
+            //initializing the maps object with a default center at BUE
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: {
+                    lat: 30.120733,
+                    lng: 31.617223
+                },
+                zoom: 7
+            });
+
+            //getting the browser location and setting it as the new center of the map
+            if (!navigator.geolocation) {
+                alert("Geolocation is not supported by your browser");
+                return;
+            }
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    posr = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    }
+                    ori = posr;
+                    map.setCenter(posr);
+                });
+            }
+
+            //assigning the directions to the map
+            directionsDisplay.setMap(map);
+
+            // Yasser take it // Yasser take it // Yasser take it // Yasser take it // Yasser take it  // Yasser take it  // Yasser take it  // Yasser take it
+            var autocomplete = new google.maps.places.Autocomplete(document.getElementById('dest-field'));
+            autocomplete.setComponentRestrictions({
+                'country': ['eg']
+            });
+            //Yasser take it // Yasser take it  // Yasser take it  // Yasser take it  // Yasser take it  // Yasser take it  // Yasser take it  // Yasser take it
+
+            var largeinfowindow = new google.maps.InfoWindow();
+
+            document.getElementById('show-listings').addEventListener('click', startTrip);
+            document.getElementById('hide-listings').addEventListener('click', endTrip);
+            document.getElementById('join-trip').addEventListener('click', joinTrip);
+
+
+            // join trip babayyyyyy
+            function joinTrip() {
+                if (!riding && !driving) {
+                    //var dest = document.getElementById('dest-field').textContent;
+                    socket.emit('join-trip', myUserID, dest);
+                } else {
+                    alert("You are already in a trip");
+                }
+            }
+
+            socket.on('join-trip-reply', function(tripID, userID, resp) {
+
+                if (myUserID == userID) {
+                    if (tripID == -1)
+                        alert('No trips found');
+                    else {
+                        alert('Joined Trip No.' + tripID);
+                        directionsDisplay.setMap(map);
+
+                        directionsDisplay.setDirections(resp);
+                        directionsDisplay.setOptions({
+                            suppressMarkers: true
+                        });
+                        curTripId = tripID;
+                        riding = true;
+                    }
+                }
+            });
+
+            //set user id
+            socket.on('setUserId', function(userID) {
+                myUserID = userID;
+                document.getElementById('userID').innerHTML = "User ID: " + userID;
+            });
+            //join trip end babaaaay
+
+            //function to resolve the place name
+            var dest = '';
+            autocomplete.addListener('place_changed', function() {
+                var place = autocomplete.getPlace();
+                if (!place.geometry) {
+                    // User entered the name of a Place that was not suggested and
+                    // pressed the Enter key, or the Place Details request failed.
+                    window.alert("No details available for input: '" + place.name + "'");
+                    return;
+                }
+                if (place.address_components) {
+                    dest = [
+                        (place.address_components[0] && place.address_components[0].short_name || ''),
+                        (place.address_components[1] && place.address_components[1].short_name || ''),
+                        (place.address_components[2] && place.address_components[2].short_name || '')
+                    ].join(' ');
+                }
+            });
+
+            //ride updated by the driver
+            socket.on('ride-updated', function(tripID, dest, pos, driverID) {
+                if (!driving) {
+                    var marker = new google.maps.Marker({
+                        position: new google.maps.LatLng(pos.lat, pos.lng),
+                        title: '',
+                        id: tripID
+                    });
+                    if (riding) {
+
+                        if (tripID != curTripId)
+                            return;
+                        removeMarkers();
+                        marker.setMap(map);
+                        markers.push(marker);
+                    }
+
+                    if (markers.length == 0) {
+                        marker.setMap(map);
+                        markers.push(marker);
+                    } else {
+                        var i;
+                        var flag = true;
+                        for (i = 0; i < markers.length; i++) {
+                            if (markers[i].id == tripID) {
+                                markers[i].setMap(null);
+                                markers[i] = marker;
+                                markers[i].setMap(map);
+                                flag = false;
+                                break;
+                            }
+                        }
+
+                        if (flag) {
+                            marker.setMap(map);
+                            markers.push(marker);
+                        }
+
+                    }
+                }
+
+            });
+
+
+            //rider event block started
+            socket.on('ride-started', function(userlocation) {
+                var marker = new google.maps.Marker({
+                    position: userlocation,
+                    title: 'user',
+
+                });
+                showMarker(marker);
+            });
+
+            //clear ended trip marker
+            socket.on('ride-ended', function(tripID, dest, pos, driverID) {
+                for (i = 0; i < markers.length; i++) {
+
+                    if (markers[i].id == tripID) {
+                        markers[i].setMap(null);
+                        markers.splice(i, 1);
+                        break;
+                    }
+                }
+                if (tripID == curTripId) {
+                    removeMarkers();
+                    curTripId = -1;
+                    riding = false;
+                    directionsDisplay.setMap(null);
+                } else {
+
+                    for (i = 0; i < markers.length; i++) {
+
+                        if (markers[i].id == driverID) {
+
+                            markers[i].setMap(null);
+                            //remove one element from index i
+                            markers.splice(i, 1);
+                        }
+
+                    }
+                }
+
+            });
+
+            function showMarker(marker) {
+                marker.setMap(map);
+                //markers.push(marker);
+            }
+            // rider event block ended
+
+
+            //driver event block started
+            function startTrip() {
+                if (!riding && !driving) {
+                    if (!navigator.geolocation) {
+                        alert("Geolocation is not supported by your browser");
+                        return;
+                    }
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(function(position) {
+                            var pos = {
+                                lat: position.coords.latitude,
+                                lng: position.coords.longitude
+                            }
+                            calculateAndDisplayRoute(pos, directionsService, directionsDisplay);
+                        });
+                    }
+                } else {
+                    alert("You are already in a trip!");
+                }
+
+            }
+
+            var pointsArray = [];
+
+            function calculateAndDisplayRoute(pos, directionsService, directionsDisplay) {
+                directionsDisplay.setMap(map);
+                directionsDisplay.setOptions({
+                    suppressMarkers: true
+                });
+                directionsService.route({
+                    origin: ori,
+                    destination: dest,
+                    travelMode: 'DRIVING',
+
+                }, function(response, status) {
+                    //var x = codeAddress(dest);
+                    if (status === 'OK') {
+                        driving = true;
+                        removeMarkers();
+                        //socket.emit('start-ride', pos, response);
+                        socket.emit('tripStarted', myUserID, dest, pos, response);
+                        directionsDisplay.setDirections(response);
+
+
+                        var path = response.routes[0].overview_path;
+                        var legs = response.routes[0].legs;
+                        for (i = 0; i < legs.length; i++) {
+                            var steps = legs[i].steps;
+                            for (j = 0; j < steps.length; j++) {
+                                var nextSegment = steps[j].path;
+                                for (k = 0; k < nextSegment.length; k++) {
+                                    pointsArray.push(nextSegment[k]);
+                                }
+                            }
+                        }
+                        var countdown = pointsArray.length;
+                        var i = 0;
+                        var marker;
+                        var tripInterval = setInterval(function() {
+                                countdown = countdown - 50;
+                                if (!driving) {
+                                    clearInterval(tripInterval);
+                                    marker.setMap(null);
+
+                                } else if (countdown >= 0) {
+                                    userlocation = pointsArray[i];
+                                    i = i + 50;
+                                    if (marker != null)
+                                        marker.setMap(null);
+                                    marker = createMarker(userlocation);
+                                    showMarker(marker);
+                                    socket.emit('updateTrip', myUserID, dest, userlocation);
+                                    //io.emit('ride-started', userlocation);
+                                } else {
+                                    clearInterval(tripInterval);
+                                    marker.setMap(null);
+                                    endTrip();
+                                }
+                            },
+                            1000);
+
+                    } else {
+                        window.alert('Directions request failed due to ' + status);
+                    }
+                });
+            }
+
+            function codeAddress(addrez) {
+                var markPos;
+                geocoder.geocode({
+                    'address': addrez
+                }, function(results, status) {
+                    if (status == 'OK') {
+                        var markerzz = new google.maps.Marker({
+                            map: map,
+                            position: results[0].geometry.location
+                        });
+
+                        var mlat = markerzz.getPosition().lat();
+                        var mlng = markerzz.getPosition().lng();
+                        markPos = {
+                            lat: mlat,
+                            lng: mlng
+                        };
+                    } else {
+                        alert('Geocode was not successful for the following reason: ' + status);
+                    }
+                });
+                return markPos;
+            }
+
+            function endTrip() {
+                //checking if he is driving and later on there should be an event listener to whether the destination is equal to the current location then this function is to be called then
+                if (driving) {
+                    alert("Trip Ended");
+                    directionsDisplay.setMap(null);
+                    removeMarkers();
+                    socket.emit('end-ride', myUserID);
+                    driving = false;
+                } else {
+                    alert('you did not start the ride so you cannot end it');
+                }
+            }
+
+
+            function createMarker(userlocation) {
+                var marker = new google.maps.Marker({
+                    position: userlocation,
+                    title: 'user',
+                });
+                return marker;
+            }
+
+
+            function removeMarkers() {
+                for (var i = 0; i < markers.length; i++) {
+                    markers[i].setMap(null);
+                }
+                markers = [];
+            }
+            //driver event block ended
+
+
+        }
+
+    </script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?libraries=places,geometry,drawing&key=AIzaSyCH34DHB02wtLCZnsPOt6BmW3MOz4FB-qk&callback=initMap"></script>
+
+</body>
+
+</html>
