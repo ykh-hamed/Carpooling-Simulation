@@ -25,15 +25,12 @@ io.on('connection', function (socket) {
             lng: -1
         };
         var i;
-        //console.log(driverID);
         for (i = 0; i < tripList.length; i++) {
-            //console.log('updateTrip' + tripList[i].tId + tripList[i].dest, tripList[i].curPos, tripList[i].did);
-            console.log(tripList[i].did);
             if (curID == tripList[i].did) {
                 break;
             }
         }
-        //console.log(tripList[i].did);
+
         if (i < tripList.length) {
             socket.broadcast.emit('ride-ended', tripList[i].tId, tripList[i].dest, pos, tripList[i].did);
             tripList.splice(i, 1);
@@ -43,7 +40,6 @@ io.on('connection', function (socket) {
 
     //driver location update event
     socket.on('tripStarted', function (driverID, mdest, pos, response) {
-        console.log('here at tripStarted' + mdest);
         tripID++;
         var trip = {
             did: driverID,
@@ -53,28 +49,23 @@ io.on('connection', function (socket) {
             resp: response
         };
         tripList.push(trip);
-        //console.log(tripList[0]);
     });
 
     socket.on('updateTrip', function (driverID, dest, pos) {
         var i;
         for (i = 0; i < tripList.length; i++) {
-            //console.log('updateTrip' + tripList[i].tId + tripList[i].dest, tripList[i].curPos, tripList[i].did);
             if (driverID == tripList[i].did) {
                 tripList[i].curPos = pos;
                 break;
             }
         }
         socket.broadcast.emit('ride-updated', tripList[i].tId, tripList[i].dest, tripList[i].curPos, tripList[i].did);
-        //console.log(tripList[i].tId, tripList[i].dest, tripList[i].curPos, tripList[i].did);
     });
 
     socket.on('join-trip', function (riderID, dest) {
         var i;
         var tripID = -1;
         for (i = 0; i < tripList.length; i++) {
-            //console.log('updateTrip' + tripList[i].tId + tripList[i].dest, tripList[i].curPos, tripList[i].did);
-            console.log(tripList[i].dest + "  " + dest);
             if (dest == tripList[i].dest) {
                 tripID = tripList[i].tId;
                 break;
@@ -82,8 +73,6 @@ io.on('connection', function (socket) {
 
         }
 
-
-        console.log('jointrip');
         if (i < tripList.length) {
             io.emit('join-trip-reply', tripID, riderID, tripList[i].resp);
         } else {
@@ -96,7 +85,6 @@ io.on('connection', function (socket) {
     socket.on('start-ride', function (userlocation, result) {
         //periodic event
         var pointsArray = [];
-        //console.log(result.routes);
         var path = result.routes[0].overview_path;
         var legs = result.routes[0].legs;
         for (i = 0; i < legs.length; i++) {
@@ -132,18 +120,13 @@ io.on('connection', function (socket) {
             lng: -1
         };
         var i;
-        //console.log(driverID);
         for (i = 0; i < tripList.length; i++) {
-            //console.log('updateTrip' + tripList[i].tId + tripList[i].dest, tripList[i].curPos, tripList[i].did);
-            console.log(tripList[i].did);
             if (driverID == tripList[i].did) {
                 break;
             }
         }
-        //console.log(tripList[i].did);
         socket.broadcast.emit('ride-ended', tripList[i].tId, tripList[i].dest, pos, tripList[i].did);
         tripList.splice(i, 1);
-        //socket.broadcast.emit('ride-ended', 'there should be stuff added here later I didnt think of em yet');
     });
 
 });

@@ -55,7 +55,6 @@
             text-align: left;
             width: 340px;
         }
-
     </style>
 </head>
 
@@ -126,12 +125,13 @@
             //assigning the directions to the map
             directionsDisplay.setMap(map);
 
-            // Yasser take it // Yasser take it // Yasser take it // Yasser take it // Yasser take it  // Yasser take it  // Yasser take it  // Yasser take it
+            //autocompleete country
             var autocomplete = new google.maps.places.Autocomplete(document.getElementById('dest-field'));
+            /* autocomplete country restriction
             autocomplete.setComponentRestrictions({
                 'country': ['eg']
             });
-            //Yasser take it // Yasser take it  // Yasser take it  // Yasser take it  // Yasser take it  // Yasser take it  // Yasser take it  // Yasser take it
+            */
 
             var largeinfowindow = new google.maps.InfoWindow();
 
@@ -140,10 +140,9 @@
             document.getElementById('join-trip').addEventListener('click', joinTrip);
 
 
-            // join trip babayyyyyy
+            // join trip 
             function joinTrip() {
                 if (!riding && !driving) {
-                    //var dest = document.getElementById('dest-field').textContent;
                     socket.emit('join-trip', myUserID, dest);
                 } else {
                     alert("You are already in a trip");
@@ -174,7 +173,6 @@
                 myUserID = userID;
                 document.getElementById('userID').innerHTML = "User ID: " + userID;
             });
-            //join trip end babaaaay
 
             //function to resolve the place name
             var dest = '';
@@ -282,7 +280,6 @@
 
             function showMarker(marker) {
                 marker.setMap(map);
-                //markers.push(marker);
             }
             // rider event block ended
 
@@ -322,14 +319,11 @@
                     travelMode: 'DRIVING',
 
                 }, function(response, status) {
-                    //var x = codeAddress(dest);
                     if (status === 'OK') {
                         driving = true;
                         removeMarkers();
-                        //socket.emit('start-ride', pos, response);
                         socket.emit('tripStarted', myUserID, dest, pos, response);
                         directionsDisplay.setDirections(response);
-
 
                         var path = response.routes[0].overview_path;
                         var legs = response.routes[0].legs;
@@ -359,7 +353,6 @@
                                     marker = createMarker(userlocation);
                                     showMarker(marker);
                                     socket.emit('updateTrip', myUserID, dest, userlocation);
-                                    //io.emit('ride-started', userlocation);
                                 } else {
                                     clearInterval(tripInterval);
                                     marker.setMap(null);
@@ -431,7 +424,6 @@
 
 
         }
-
     </script>
     <script async defer src="https://maps.googleapis.com/maps/api/js?libraries=places,geometry,drawing&key=AIzaSyCH34DHB02wtLCZnsPOt6BmW3MOz4FB-qk&callback=initMap"></script>
 
